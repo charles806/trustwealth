@@ -1,0 +1,7 @@
+[build]
+language = "php"
+framework = "php"
+installCommand = ""
+buildCommand = ""
+startCommand = "php -S 0.0.0.0:${PORT:-8080}"
+port = 8080
