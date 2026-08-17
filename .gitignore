@@ -1,1 +1,5 @@
 database/install.php
+app/config.local.php
+sync.sh
+.DS_Store
+.vscode/

@@ -5,6 +5,9 @@ if (!function_exists('current_user')) {
     require_once __DIR__ . '/../app/auth.php';
 }
 
+/* First-request warm-up: guarantees the schema is built on any page load. */
+db();
+
 $user = current_user();
 $isAuth = $user !== null;
 $pageTitle = $pageTitle ?? APP_NAME;

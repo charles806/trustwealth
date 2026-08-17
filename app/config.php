@@ -6,19 +6,46 @@ define('APP_NAME', 'Trust Wealth Ltd');
 /* Live market rate used across the site (demo). */
 define('BTC_USD_RATE', 94500.0);
 
-/* Database — XAMPP defaults. Adjust if your setup differs. */
-define('DB_HOST', '127.0.0.1');
-define('DB_PORT', 3306);
-define('DB_NAME', 'trust_wealth');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+/*
+ * Local development override.
+ * Drop an app/config.local.php (gitignored) with the same constants to use a
+ * local database, e.g.:
+ *
+ *   define('DB_HOST', '127.0.0.1');
+ *   define('DB_PORT', 3306);
+ *   define('DB_NAME', 'trust_wealth');
+ *   define('DB_USER', 'root');
+ *   define('DB_PASS', '');
+ *
+ * Without that file, the production (pxxl) database below is used.
+ */
+$__localConfig = __DIR__ . '/config.local.php';
+if (is_file($__localConfig)) {
+    require $__localConfig;
+}
+
+/* Database — production (pxxl) defaults. */
+if (!defined('DB_HOST')) define('DB_HOST', '2440xm1uv.pxxldb.pxxl.pro');
+if (!defined('DB_PORT')) define('DB_PORT', 52380);
+if (!defined('DB_NAME')) define('DB_NAME', 'pxxldb_1a0102c98f18a9c');
+if (!defined('DB_USER')) define('DB_USER', 'pxxluser_1a0102c98f1c976');
+if (!defined('DB_PASS')) define('DB_PASS', 'HWK87fJbNcfKE4&dU9fzmEm0jw95KkqL');
+
+/* Request is served over HTTPS? */
+$__https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['SERVER_PORT'] ?? 0) == 443);
+
+/* Never leak errors to visitors on production; they're written to the log. */
+if ($__https) {
+    ini_set('display_errors', '0');
+}
 
 /* Session boot. */
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_set_cookie_params([
         'httponly' => true,
         'samesite' => 'Lax',
-        'secure' => false,
+        'secure' => $__https,
         'path' => '/',
     ]);
     session_name('tw_session');
