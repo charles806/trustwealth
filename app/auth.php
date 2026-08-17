@@ -40,11 +40,7 @@ function login_user(int $id): void
 
 function csrf_token(): string
 {
-    if (empty($_SESSION['csrf'])) {
-        $_SESSION['csrf'] = bin2hex(random_bytes(16));
-    }
-
-    return $_SESSION['csrf'];
+    return $_COOKIE['tw_csrf'] ?? '';
 }
 
 function csrf_field(): string
@@ -57,7 +53,7 @@ function csrf_field(): string
 function csrf_check(): void
 {
     $sent = $_POST['csrf'] ?? '';
-    $expect = $_SESSION['csrf'] ?? '';
+    $expect = $_COOKIE['tw_csrf'] ?? '';
 
     if ($sent === '' || !hash_equals((string) $expect, (string) $sent)) {
         http_response_code(419);

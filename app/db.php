@@ -87,6 +87,8 @@ function _schema_bootstrap(PDO $pdo): void
             $pdo->exec($sql);
         }
 
+        _ensure_sessions_table($pdo);
+
         $planCount = (int) $pdo->query('SELECT COUNT(*) FROM plans')->fetchColumn();
         if ($planCount === 0) {
             $insert = $pdo->prepare(
@@ -105,5 +107,22 @@ function _schema_bootstrap(PDO $pdo): void
         }
     } catch (Throwable $er) {
         error_log('schema bootstrap: ' . $er->getMessage());
+    }
+}
+
+function _ensure_sessions_table(PDO $pdo): void
+{
+    try {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS sessions (
+                id VARCHAR(128) NOT NULL PRIMARY KEY,
+                data TEXT NULL,
+                last_activity INT UNSIGNED NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_sessions_activity (last_activity)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    } catch (Throwable $er) {
+        error_log('schema bootstrap: sessions table: ' . $er->getMessage());
     }
 }
