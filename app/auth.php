@@ -32,6 +32,31 @@ function require_login(): array
     return $user;
 }
 
+function is_admin(): bool
+{
+    $user = current_user();
+
+    return $user !== null && (int) ($user['is_admin'] ?? 0) === 1;
+}
+
+function require_admin(): array
+{
+    $user = current_user();
+
+    if ($user === null) {
+        header('Location: login.php');
+        exit;
+    }
+
+    if ((int) ($user['is_admin'] ?? 0) !== 1) {
+        http_response_code(403);
+        echo 'Operator access only.';
+        exit;
+    }
+
+    return $user;
+}
+
 function login_user(int $id): void
 {
     session_regenerate_id(true);

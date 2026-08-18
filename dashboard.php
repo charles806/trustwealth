@@ -17,28 +17,35 @@ $portStmt = $pdo->prepare(
 $portStmt->execute([$user['id']]);
 $portfolio = $portStmt->fetch();
 
-$txStmt = $pdo->prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 20');
+if ($portfolio === false) {
+    $pdo->prepare('INSERT INTO portfolios (user_id, balance_usd, btc_amount) VALUES (?, 0, 0)')
+        ->execute([$user['id']]);
+    $portStmt->execute([$user['id']]);
+    $portfolio = $portStmt->fetch();
+}
+
+$txStmt = $pdo->prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 8');
 $txStmt->execute([$user['id']]);
 $transactions = $txStmt->fetchAll();
-
-$plans = $pdo->query('SELECT * FROM plans ORDER BY sort')->fetchAll();
 
 $totStmt = $pdo->prepare(
     'SELECT
         COALESCE(SUM(CASE WHEN type = "return" AND status = "completed" THEN amount END), 0) AS returns_total,
-        COALESCE(SUM(CASE WHEN type = "referral" AND status = "completed" THEN amount END), 0) AS referral_total
+        COALESCE(SUM(CASE WHEN type = "referral" AND status = "completed" THEN amount END), 0) AS referral_total,
+        COALESCE(SUM(CASE WHEN type = "withdraw" AND status = "completed" THEN amount END), 0) AS withdrawn_total
      FROM transactions WHERE user_id = ?'
 );
 $totStmt->execute([$user['id']]);
 $tot = $totStmt->fetch();
 
-$planActive = $portfolio !== false && $portfolio['plan_id'] !== null;
+$planActive = $portfolio !== false && $portfolio['plan_id'] !== null && (int) ($portfolio['plan_paid_out'] ?? 0) === 0;
+$planDone = $portfolio !== false && $portfolio['plan_id'] !== null && (int) ($portfolio['plan_paid_out'] ?? 0) === 1;
 $nextTs = 0;
 $progressPct = 0;
 $elapsedDays = 0;
 $nextLabel = '—';
 
-if ($planActive && $portfolio['plan_started_at'] !== null && $portfolio['plan_started_at'] !== '') {
+if (($planActive || $planDone) && $portfolio['plan_started_at'] !== null && $portfolio['plan_started_at'] !== '') {
     $started = strtotime($portfolio['plan_started_at']);
     $period = max(1, (int) $portfolio['period_days']) * 86400;
     $nextTs = $started + $period;
@@ -52,91 +59,29 @@ if ($planActive && $portfolio['plan_started_at'] !== null && $portfolio['plan_st
 /* Flash banner (querystring-driven, so it survives redirects). */
 $flash = null;
 if (isset($_GET['started'])) {
-    $flash = ['ok', 'Your plan is live. A deposit of ' . fmt_money((float) $portfolio['plan_amount']) . ' is pending confirmation.'];
+    $flash = ['ok', 'Your plan is live. The payout clock has started.'];
 } elseif (isset($_GET['login'])) {
     $flash = ['ok', 'You are logged in.'];
-}
-
-/* Start-a-plan action. */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'start_plan') {
-    csrf_check();
-    $planId = (int) ($_POST['plan_id'] ?? 0);
-    $errMsg = null;
-
-    try {
-        if ($planActive) {
-            $errMsg = 'You already have an active plan.';
-        } else {
-            $planStmt = $pdo->prepare('SELECT * FROM plans WHERE id = ? LIMIT 1');
-            $planStmt->execute([$planId]);
-            $plan = $planStmt->fetch();
-
-            if (!$plan) {
-                $errMsg = 'That plan does not exist.';
-            } else {
-                $amount = (float) $plan['min_amount'];
-                $btc = $amount / BTC_USD_RATE;
-
-                $pdo->beginTransaction();
-                $pdo->prepare(
-                    'UPDATE portfolios
-                     SET plan_id = ?, plan_amount = ?, plan_started_at = ?,
-                         balance_usd = balance_usd + ?, btc_amount = btc_amount + ?
-                     WHERE user_id = ?'
-                )->execute([$planId, $amount, date('Y-m-d H:i:s'), $amount, $btc, $user['id']]);
-
-                $pdo->prepare(
-                    'INSERT INTO transactions (user_id, type, amount, status, note) VALUES (?, "deposit", ?, "pending", ?)'
-                )->execute([$user['id'], $amount, $plan['name'] . ' plan deposit']);
-
-                $pdo->commit();
-                header('Location: dashboard.php?started=1');
-                exit;
-            }
-        }
-    } catch (Throwable $er) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        error_log('dashboard start_plan: ' . $er->getMessage());
-        $errMsg = 'Could not start the plan. Please try again.';
-    }
-
-    if ($errMsg !== null) {
-        $flash = ['error', $errMsg];
-    }
 }
 
 $pageTitle = 'Dashboard';
 $bodyClass = 'console-page';
 $extraCss = 'console.css';
-$active = '';
+$activeNav = 'overview';
 
 include __DIR__ . '/partials/header.php';
+
+$nav = [
+    ['dashboard.php', 'fa-gauge', 'Overview', 'overview'],
+    ['deposit.php', 'fa-arrow-down-to-bracket', 'Deposit', 'deposit'],
+    ['invest.php', 'fa-layer-group', 'Plans', 'invest'],
+    ['withdraw.php', 'fa-arrow-up-from-bracket', 'Withdraw', 'withdraw'],
+    ['profile.php', 'fa-user', 'Profile', 'profile'],
+];
 ?>
 
 <div class="console">
-    <aside class="rail">
-        <span class="rail-brand"><span class="mark"></span>Trust&thinsp;Wealth</span>
-
-        <nav class="rail-nav" aria-label="Dashboard sections">
-            <a class="rail-link is-active" href="#overview"><i class="fa-solid fa-gauge"></i>Overview</a>
-            <a class="rail-link" href="#plans"><i class="fa-solid fa-layer-group"></i>Plans</a>
-            <a class="rail-link" href="#deposit"><i class="fa-solid fa-arrow-down-to-bracket"></i>Deposit</a>
-            <a class="rail-link" href="#transactions"><i class="fa-solid fa-receipt"></i>Transactions</a>
-        </nav>
-
-        <div class="rail-foot">
-            <div class="rail-user">
-                <span class="avatar"><?= e(strtoupper(substr($user['fullname'], 0, 1))) ?></span>
-                <div class="rail-user-meta">
-                    <strong><?= e($user['fullname']) ?></strong>
-                    <span>@<?= e($user['username']) ?></span>
-                </div>
-            </div>
-            <a href="logout.php" class="btn btn-ghost rail-logout"><i class="fa-solid fa-arrow-right-from-bracket"></i>Log out</a>
-        </div>
-    </aside>
+    <?php include __DIR__ . '/partials/console_rail.php'; ?>
 
     <main class="console-main" id="main">
         <div class="console-top">
@@ -154,26 +99,31 @@ include __DIR__ . '/partials/header.php';
         <section id="overview">
             <div class="panel balance-hero">
                 <div>
-                    <p class="panel-label">Portfolio value</p>
+                    <p class="panel-label">Available balance</p>
                     <p class="balance-value"><?= fmt_money((float) $portfolio['balance_usd']) ?></p>
                     <p class="balance-sub">
                         <?= number_format((float) $portfolio['btc_amount'], 6) ?> BTC
                         <span class="dot">·</span>
                         <?php if ($planActive) : ?>
-                            <span class="pos">+<?= fmt_money((float) $tot['returns_total']) ?> realized</span>
+                            <span class="pos"><?= fmt_money((float) $tot['returns_total']) ?> realized</span>
+                        <?php elseif ($planDone) : ?>
+                            plan concluded — reinvest below
                         <?php else : ?>
-                            no active plan yet
+                            nothing deposited yet
                         <?php endif; ?>
                     </p>
                 </div>
-                <a href="#deposit" class="btn btn-gold">Deposit</a>
+                <div class="hero-actions">
+                    <a href="deposit.php" class="btn btn-ghost">Deposit</a>
+                    <a href="withdraw.php" class="btn btn-gold">Withdraw</a>
+                </div>
             </div>
 
             <div class="kpis">
                 <div class="panel kpi">
                     <span class="panel-label">Active plan</span>
-                    <span class="kpi-val"><?= $planActive ? e($portfolio['plan_name']) : 'None' ?></span>
-                    <span class="kpi-sub"><?= $planActive ? e((string) $portfolio['plan_yield']) . '% per ' . (int) $portfolio['period_days'] . ' days' : 'Pick one below' ?></span>
+                    <span class="kpi-val"><?= $planActive ? e($portfolio['plan_name']) : ($planDone ? 'Concluded' : 'None') ?></span>
+                    <span class="kpi-sub"><?= $planActive ? e((string) $portfolio['plan_yield']) . '% · ' . (int) $portfolio['period_days'] . ' day cycle' : 'See Plans below' ?></span>
                 </div>
                 <div class="panel kpi">
                     <span class="panel-label">Total returns</span>
@@ -186,9 +136,9 @@ include __DIR__ . '/partials/header.php';
                     <span class="kpi-sub">10% per invite</span>
                 </div>
                 <div class="panel kpi">
-                    <span class="panel-label">Days active</span>
-                    <span class="kpi-val"><?= days_active($user['created_at']) ?></span>
-                    <span class="kpi-sub">Since <?= e(date('M Y', strtotime($user['created_at']))) ?></span>
+                    <span class="panel-label">Withdrawn</span>
+                    <span class="kpi-val"><?= fmt_money((float) $tot['withdrawn_total']) ?></span>
+                    <span class="kpi-sub">Lifetime payouts out</span>
                 </div>
             </div>
         </section>
@@ -202,15 +152,20 @@ include __DIR__ . '/partials/header.php';
                     <p class="countdown-date">maturing <?= e($nextLabel) ?></p>
                     <div class="progress"><span style="width: <?= (int) $progressPct ?>%"></span></div>
                     <p class="progress-meta"><span><?= (int) $elapsedDays ?> day<?= $elapsedDays === 1 ? '' : 's' ?> running</span><span><?= (int) $progressPct ?>% to payout</span></p>
+                <?php elseif ($planDone) : ?>
+                    <p class="countdown">00:00:00</p>
+                    <p class="countdown-sub">Your <strong><?= e($portfolio['plan_name']) ?></strong> plan has been paid out. Start a new one when you're ready.</p>
+                    <a href="invest.php" class="btn btn-gold" style="margin-top: 1.2rem;">Reinvest</a>
                 <?php else : ?>
                     <p class="countdown">--:--:--</p>
-                    <p class="countdown-sub">Start a plan to begin the payout clock.</p>
+                    <p class="countdown-sub">Invest from your balance to begin the payout clock.</p>
+                    <a href="invest.php" class="btn btn-gold" style="margin-top: 1.2rem;">Start a plan</a>
                 <?php endif; ?>
             </div>
 
             <div class="panel convert-panel">
                 <p class="panel-label">// Converter</p>
-                <p class="panel-price">1 BTC = <span class="gold" id="price-value">$94,500.00</span></p>
+                <p class="panel-price">1 BTC = <span class="gold" id="price-value">$64316.16</span></p>
                 <div class="converter">
                     <div class="field">
                         <input type="number" id="btcAmount" inputmode="decimal" placeholder="0.00" aria-label="Bitcoin amount" min="0" step="any">
@@ -225,68 +180,10 @@ include __DIR__ . '/partials/header.php';
             </div>
         </section>
 
-        <section id="plans">
+        <section id="activity">
             <div class="section-title">
-                <h2>Your plans</h2>
-                <?php if ($planActive) : ?>
-                    <p>Your <strong><?= e($portfolio['plan_name']) ?></strong> plan is running. You can stack a new one after it pays out.</p>
-                <?php else : ?>
-                    <p>Start a plan — your deposit is credited instantly, then the payout clock starts.</p>
-                <?php endif; ?>
-            </div>
-
-            <?php if ($planActive) : ?>
-                <div class="panel active-plan">
-                    <div>
-                        <p class="panel-label">Running plan</p>
-                        <p class="active-plan-name"><?= e($portfolio['plan_name']) ?></p>
-                        <p class="kpi-sub"><?= e((string) $portfolio['plan_yield']) ?>% on <?= fmt_money((float) $portfolio['plan_amount']) ?> · <?= (int) $portfolio['period_days'] ?>-day cycle</p>
-                    </div>
-                    <span class="pill pill-ok"><i class="fa-solid fa-circle-check"></i>Active</span>
-                </div>
-            <?php else : ?>
-                <div class="console-plans">
-                    <?php foreach ($plans as $plan) : ?>
-                        <form action="dashboard.php" method="POST" class="plan">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="action" value="start_plan">
-                            <input type="hidden" name="plan_id" value="<?= (int) $plan['id'] ?>">
-                            <p class="plan-name"><?= e($plan['name']) ?></p>
-                            <p class="plan-range">$<?= number_format((float) $plan['min_amount']) ?> +</p>
-                            <p class="plan-yield"><?= e((string) $plan['yield_pct']) ?>% after <?= (int) $plan['period_days'] ?> day<?= (int) $plan['period_days'] === 1 ? '' : 's' ?></p>
-                            <button type="submit" class="btn btn-ghost">Start plan</button>
-                        </form>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-        </section>
-
-        <section id="deposit">
-            <div class="section-title">
-                <h2>Deposit</h2>
-                <p>Send your balance in either currency, then come back — deposits appear within minutes.</p>
-            </div>
-
-            <div class="deposit-grid">
-                <div class="panel address-card">
-                    <p class="panel-label"><i class="fa-brands fa-bitcoin"></i> Bitcoin</p>
-                    <p class="addr" id="addr-btc">bc1q7wln9r6qw2kxwvrs8t3gr0k9z4hx7tkm</p>
-                    <button type="button" class="btn btn-ghost" data-copy="addr-btc"><i class="fa-regular fa-copy"></i>Copy address</button>
-                </div>
-                <div class="panel address-card">
-                    <p class="panel-label"><i class="fa-solid fa-coins"></i> Tether USDT</p>
-                    <p class="addr" id="addr-usdt">TXj9yQw3VJzJfTb2HcN5pLk8mQw6Ad3R1c</p>
-                    <button type="button" class="btn btn-ghost" data-copy="addr-usdt"><i class="fa-regular fa-copy"></i>Copy address</button>
-                </div>
-            </div>
-
-            <p class="deposit-note"><i class="fa-solid fa-flask"></i> Demo environment — transfers are simulated and credited to the account instantly.</p>
-        </section>
-
-        <section id="transactions">
-            <div class="section-title">
-                <h2>Transactions</h2>
-                <p>Your deposits, returns and referral credits, newest first.</p>
+                <h2>Recent activity</h2>
+                <p>Deposits, investments, returns and withdrawals, newest first.</p>
             </div>
 
             <?php if (count($transactions) === 0) : ?>
@@ -308,21 +205,31 @@ include __DIR__ . '/partials/header.php';
                         </thead>
                         <tbody>
                             <?php foreach ($transactions as $tx) : ?>
+                                <?php
+                                $sign = in_array($tx['type'], ['withdraw'], true) ? '-' : '+';
+                                $cls = $tx['type'] === 'return' ? 'pos' : ($tx['type'] === 'referral' ? 'gold' : ($tx['type'] === 'withdraw' ? 'neg' : ''));
+                                $icon = match ($tx['type']) {
+                                    'deposit' => 'fa-arrow-down-to-bracket',
+                                    'invest' => 'fa-layer-group',
+                                    'return' => 'fa-arrow-trend-up',
+                                    'referral' => 'fa-user-plus',
+                                    'withdraw' => 'fa-arrow-up-from-bracket',
+                                    default => 'fa-receipt',
+                                };
+                                ?>
                                 <tr>
                                     <td class="mono muted"><?= e(fmt_date($tx['created_at'])) ?></td>
                                     <td>
                                         <span class="tx-type tx-<?= e($tx['type']) ?>">
-                                            <i class="fa-solid <?= $tx['type'] === 'deposit' ? 'fa-arrow-down-to-bracket' : ($tx['type'] === 'return' ? 'fa-arrow-trend-up' : 'fa-user-plus') ?>"></i>
+                                            <i class="fa-solid <?= $icon ?>"></i>
                                             <?= ucfirst(e($tx['type'])) ?>
                                         </span>
                                     </td>
                                     <td class="muted"><?= e((string) ($tx['note'] ?? '')) ?></td>
-                                    <td class="num mono <?= $tx['type'] !== 'deposit' ? 'pos' : '' ?>">
-                                        <?= $tx['type'] !== 'deposit' ? '+' : '' ?><?= fmt_money((float) $tx['amount']) ?>
-                                    </td>
+                                    <td class="num mono <?= $cls ?>"><?= $sign ?><?= fmt_money((float) $tx['amount']) ?></td>
                                     <td>
-                                        <span class="pill <?= $tx['status'] === 'completed' ? 'pill-ok' : 'pill-wait' ?>">
-                                            <?= $tx['status'] === 'completed' ? 'Completed' : 'Pending' ?>
+                                        <span class="pill <?= $tx['status'] === 'completed' ? 'pill-ok' : ($tx['status'] === 'cancelled' ? 'pill-cancel' : 'pill-wait') ?>">
+                                            <?= ucfirst(e($tx['status'])) ?>
                                         </span>
                                     </td>
                                 </tr>

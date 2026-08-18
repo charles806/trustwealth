@@ -6,6 +6,10 @@ define('APP_NAME', 'Trust Wealth Ltd');
 /* Live market rate used across the site (demo). */
 define('BTC_USD_RATE', 94500.0);
 
+/* Deposit wallet addresses — the client's own addresses. Override in Settings. */
+define('BTC_DEPOSIT_ADDRESS', 'bc1q7wln9r6qw2kxwvrs8t3gr0k9z4hx7tkm');
+define('USDT_DEPOSIT_ADDRESS', 'TXj9yQw3VJzJfTb2HcN5pLk8mQw6Ad3R1c');
+
 function is_https(): bool
 {
     return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')

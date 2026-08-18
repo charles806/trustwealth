@@ -80,34 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$old['fullname'], $old['username'], $old['email'], $hash]);
             $userId = (int) $pdo->lastInsertId();
 
-            /* ---- demo portfolio seed -------------------------------------- */
-            $planStmt = $pdo->prepare('SELECT id, min_amount, yield_pct FROM plans WHERE name = ? LIMIT 1');
-            $planStmt->execute(['Business']);
-            $business = $planStmt->fetch();
-
-            $started = new DateTimeImmutable('-2 days');
-            $planAmount = $business ? (float) $business['min_amount'] : 1000.0;
-            $interest = $business ? round($planAmount * (float) $business['yield_pct'] / 100, 2) : 150.0;
-
-            $balance = 4000.0 + $interest + 250.0;
-            $btc = $balance / BTC_USD_RATE;
-
-            $pdo->prepare('INSERT INTO portfolios (user_id, balance_usd, btc_amount, plan_id, plan_amount, plan_started_at) VALUES (?, ?, ?, ?, ?, ?)')
-                ->execute([$userId, $balance, $btc, $business['id'] ?? null, $planAmount, $started->format('Y-m-d H:i:s')]);
-
-            $txSeed = [
-                ['deposit', 4000.0, 'completed', 'Initial deposit', '-6 days'],
-                ['return', $interest, 'completed', null, '-2 days'],
-                ['referral', 250.0, 'completed', 'Referral bonus', '-1 days'],
-            ];
-            $insertTx = $pdo->prepare(
-                'INSERT INTO transactions (user_id, type, amount, status, note, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-            );
-            foreach ($txSeed as [$type, $amount, $status, $note, $offset]) {
-                $when = (new DateTimeImmutable($offset))->format('Y-m-d H:i:s');
-                $insertTx->execute([$userId, $type, $amount, $status, $note, $when]);
-            }
-            /* ---------------------------------------------------------------- */
+            $pdo->prepare('INSERT INTO portfolios (user_id, balance_usd, btc_amount) VALUES (?, 0, 0)')
+                ->execute([$userId]);
 
             $pdo->commit();
 

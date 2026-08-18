@@ -264,8 +264,347 @@
     color: var(--pos);
 }
 
+.neg {
+    color: #f87171;
+}
+
 .gold {
     color: var(--gold);
+}
+
+.hero-actions {
+    display: flex;
+    gap: 0.7rem;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* form blocks used across deposit / withdraw / profile / admin */
+
+.deposit-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.deposit-form form {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.field-stack {
+    display: block;
+    padding: 0;
+    background: transparent;
+    border: none;
+}
+
+.field-stack input,
+.field-stack select {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    padding: 0.85rem 0.9rem;
+    margin-top: 0.4rem;
+    transition: border-color var(--ease), box-shadow var(--ease);
+}
+
+.field-stack .panel-label {
+    margin-bottom: 0;
+}
+
+.field-stack select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--gold) 50%),
+        linear-gradient(135deg, var(--gold) 50%, transparent 50%);
+    background-position: calc(100% - 20px) 50%, calc(100% - 15px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.field-stack input:focus,
+.field-stack select:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-soft);
+}
+
+.btn-block {
+    width: 100%;
+    justify-content: center;
+}
+
+.btn-sm {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.78rem;
+}
+
+.btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.guide-strip {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    padding: 1.1rem 1.5rem;
+    margin-bottom: 1.4rem;
+}
+
+.guide-strip ol {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+}
+
+.guide-strip li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    color: var(--muted);
+    font-size: 0.88rem;
+    counter-increment: step;
+    line-height: 1.5;
+}
+
+.guide-strip li::before {
+    content: counter(step);
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--gold);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    border-radius: 6px;
+}
+
+.c-reverse {
+    grid-template-columns: 0.9fr 1.1fr;
+}
+
+.board {
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+}
+
+.coin-toggle {
+    display: flex;
+    gap: 0.7rem;
+}
+
+.coin-toggle label {
+    flex: 1;
+}
+
+.coin-toggle input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.coin-opt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all var(--ease);
+}
+
+.coin-opt i {
+    color: var(--gold);
+    font-size: 1.05rem;
+}
+
+.coin-toggle input:checked + .coin-opt,
+.coin-opt.active {
+    border-color: var(--gold);
+    color: var(--text);
+    background: var(--gold-soft);
+    box-shadow: 0 0 0 3px var(--gold-soft);
+}
+
+.coin-toggle input:focus-visible + .coin-opt {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
+/* ---------- tx type colours ---------- */
+
+.tx-deposit i {
+    color: var(--gold);
+}
+
+.tx-invest i {
+    color: #b7c9ff;
+}
+
+.tx-withdraw i {
+    color: #f87171;
+}
+
+.tx-referral i {
+    color: #c4b5fd;
+}
+
+.pill-cancel {
+    border-color: rgba(248, 113, 113, 0.4);
+    color: #f87171;
+}
+
+.pill-cancel i {
+    color: inherit;
+}
+
+/* ---------- admin ---------- */
+
+.tab-bar {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1.6rem;
+    padding-bottom: 0;
+}
+
+.tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.1rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    transition: color var(--ease), background var(--ease);
+}
+
+.tab i {
+    color: inherit;
+    font-size: 0.85rem;
+}
+
+.tab:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.tab.is-active {
+    color: var(--gold);
+    background: var(--panel);
+    border-color: var(--line);
+    border-bottom: 2px solid var(--gold);
+}
+
+.badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--gold);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+}
+
+.row-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.row-actions form {
+    margin: 0;
+}
+
+.claim-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.2rem;
+    border-color: rgba(242, 193, 78, 0.35);
+    margin-bottom: 1.6rem;
+}
+
+.claim-panel form {
+    margin: 0;
+}
+
+.check-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.9rem;
+}
+
+.check-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.check-list i {
+    color: var(--pos);
+    margin-top: 0.2rem;
+}
+
+/* ---------- operator login ---------- */
+
+.admin-card {
+    border-color: rgba(242, 193, 78, 0.35);
+}
+
+.admin-card .eyebrow {
+    color: var(--gold);
+    margin-bottom: 0.6rem;
+}
+
+.admin-card .eyebrow i {
+    margin-right: 0.4rem;
+}
+
+.invest-plans .plan .field {
+    margin-top: auto;
 }
 
 /* ---------- payout + converter ---------- */
@@ -583,6 +922,14 @@
         grid-template-columns: 1fr;
     }
 
+    .guide-strip ol {
+        grid-template-columns: 1fr;
+    }
+
+    .c-reverse {
+        grid-template-columns: 1fr;
+    }
+
     .rail {
         position: static;
         height: auto;
@@ -640,6 +987,29 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 1.2rem;
+    }
+
+    .hero-actions {
+        width: 100%;
+    }
+
+    .hero-actions .btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .claim-panel {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .row-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .row-actions .btn {
+        justify-content: center;
     }
 
     .kpis {

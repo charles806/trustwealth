@@ -20,6 +20,7 @@ function db(): PDO
         ]);
 
         _schema_bootstrap($pdo);
+        _migrate($pdo);
     }
 
     return $pdo;
@@ -125,4 +126,126 @@ function _ensure_sessions_table(PDO $pdo): void
     } catch (Throwable $er) {
         error_log('schema bootstrap: sessions table: ' . $er->getMessage());
     }
+}
+
+/*
+ * In-place migration for databases that already exist (the CREATE-only
+ * bootstrap above skips them). Keeps the production ledger up to date
+ * without touching existing rows. Idempotent — safe on every request.
+ */
+function _migrate(PDO $pdo): void
+{
+    try {
+        _ensure_column($pdo, 'users', 'is_admin', 'ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0 AFTER email');
+        _ensure_column($pdo, 'users', 'withdrawal_address', 'ADD COLUMN withdrawal_address VARCHAR(255) NULL AFTER password_hash');
+        _ensure_column($pdo, 'portfolios', 'plan_paid_out', 'ADD COLUMN plan_paid_out TINYINT(1) NOT NULL DEFAULT 0 AFTER plan_started_at');
+
+        $type = _column_type($pdo, 'transactions', 'type');
+        if ($type !== null && stripos($type, 'invest') === false) {
+            $pdo->exec("ALTER TABLE transactions MODIFY COLUMN type ENUM('deposit','return','referral','invest','withdraw') NOT NULL");
+        }
+
+        $status = _column_type($pdo, 'transactions', 'status');
+        if ($status !== null && stripos($status, 'cancelled') === false) {
+            $pdo->exec("ALTER TABLE transactions MODIFY COLUMN status ENUM('completed','pending','cancelled') NOT NULL DEFAULT 'completed'");
+        }
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS settings (
+                s_key VARCHAR(64) NOT NULL PRIMARY KEY,
+                s_value VARCHAR(255) NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+
+        _seed_setting($pdo, 'btc_deposit_address', defined('BTC_DEPOSIT_ADDRESS') ? BTC_DEPOSIT_ADDRESS : '');
+        _seed_setting($pdo, 'usdt_deposit_address', defined('USDT_DEPOSIT_ADDRESS') ? USDT_DEPOSIT_ADDRESS : '');
+
+        _reset_seeded_demo($pdo);
+    } catch (Throwable $er) {
+        error_log('migrate: ' . $er->getMessage());
+    }
+}
+
+/*
+ * One-time cleanup for accounts created under the old signup, which seeded a
+ * fake balance + demo transactions. New signups start at $0.00 so this only
+ * ever touches accounts carrying the seeding marker. Idempotent — the marker
+ * rows are deleted, so it runs once and then finds nothing.
+ */
+function _reset_seeded_demo(PDO $pdo): void
+{
+    try {
+        $stmt = $pdo->query(
+            "SELECT DISTINCT user_id FROM transactions WHERE type = 'deposit' AND note = 'Initial deposit'"
+        );
+        $userIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+        if (count($userIds) === 0) {
+            return;
+        }
+
+        $in = implode(',', array_fill(0, count($userIds), '?'));
+
+        $pdo->prepare(
+            "UPDATE portfolios
+             SET balance_usd = 0, btc_amount = 0,
+                 plan_id = NULL, plan_amount = NULL, plan_started_at = NULL, plan_paid_out = 0
+             WHERE user_id IN ($in)"
+        )->execute($userIds);
+
+        $pdo->prepare("DELETE FROM transactions WHERE user_id IN ($in)")->execute($userIds);
+
+        error_log('reset_seeded_demo: cleared ' . count($userIds) . ' old seeded account(s)');
+    } catch (Throwable $er) {
+        error_log('reset_seeded_demo: ' . $er->getMessage());
+    }
+}
+
+function _ensure_column(PDO $pdo, string $table, string $column, string $alter): void
+{
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+    );
+    $stmt->execute([DB_NAME, $table, $column]);
+
+    if ((int) $stmt->fetchColumn() === 0) {
+        $pdo->exec('ALTER TABLE `' . $table . '` ' . $alter);
+    }
+}
+
+function _column_type(PDO $pdo, string $table, string $column): ?string
+{
+    $stmt = $pdo->prepare(
+        'SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+    );
+    $stmt->execute([DB_NAME, $table, $column]);
+    $value = $stmt->fetchColumn();
+
+    return $value === false ? null : (string) $value;
+}
+
+function _seed_setting(PDO $pdo, string $key, string $value): void
+{
+    $stmt = $pdo->prepare('INSERT IGNORE INTO settings (s_key, s_value) VALUES (?, ?)');
+    $stmt->execute([$key, $value]);
+}
+
+function setting(string $key): string
+{
+    $stmt = db()->prepare('SELECT s_value FROM settings WHERE s_key = ? LIMIT 1');
+    $stmt->execute([$key]);
+    $value = $stmt->fetchColumn();
+
+    return $value === false ? '' : (string) $value;
+}
+
+function set_setting(string $key, string $value): void
+{
+    $stmt = db()->prepare(
+        'INSERT INTO settings (s_key, s_value) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE s_value = VALUES(s_value)'
+    );
+    $stmt->execute([$key, $value]);
 }

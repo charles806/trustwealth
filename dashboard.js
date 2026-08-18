@@ -36,4 +36,18 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
     });
+
+    /* Coin toggle — swap the highlighted address card. */
+    const coinRadios = document.querySelectorAll('.coin-toggle input[name="coin"]');
+    coinRadios.forEach((radio) => {
+        radio.addEventListener("change", () => {
+            const coin = radio.value;
+            coinRadios.forEach((r) => {
+                r.closest("label").querySelector(".coin-opt").classList.toggle("active", r.value === coin);
+            });
+            document.querySelectorAll("[data-coin]").forEach((card) => {
+                card.style.display = card.dataset.coin === coin ? "block" : "none";
+            });
+        });
+    });
 });

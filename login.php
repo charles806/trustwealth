@@ -29,13 +29,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $stmt->fetch();
 
             if ($user && password_verify($password, $user['password_hash'])) {
-                login_user((int) $user['id']);
-                header('Location: dashboard.php');
-                exit;
+                if ((int) ($user['is_admin'] ?? 0) === 1) {
+                    $error = 'Admin accounts sign in through the operator portal.';
+                } else {
+                    login_user((int) $user['id']);
+                    header('Location: dashboard.php');
+                    exit;
+                }
+            } elseif ($user && (int) ($user['is_admin'] ?? 0) === 1) {
+                /* Never reveal whether an admin password was wrong. */
+                $error = 'Admin accounts sign in through the operator portal.';
+            } else {
+                /* Same message whether the account or the password was wrong. */
+                $error = 'That username or password didn&#8217;t match.';
             }
-
-            /* Same message whether the account or the password was wrong. */
-            $error = 'That username or password didn&#8217;t match.';
         } catch (Throwable $er) {
             error_log('login: ' . $er->getMessage());
             $error = 'Could not reach the account system. Please try again.';

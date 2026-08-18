@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const usdInput = document.getElementById("usdAmount");
     const priceValue = document.getElementById("price-value");
     const clock = document.getElementById("clock");
-    const BTC_TO_USD_RATE = 94500;
+    const BTC_TO_USD_RATE = 64316.16;
 
     const formatUsd = (n) =>
         n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -103,9 +103,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 (emailsOk ? confirmPassword : confirmEmail)?.focus();
                 return;
             }
-
-            e.preventDefault();
-            alert("Account creation is not wired up yet — this demo would submit to the server.");
         });
     }
 });

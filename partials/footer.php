@@ -6,10 +6,12 @@ if (!isset($scripts)) {
     $scripts = [];
 }
 ?>
+    <!-- $base: site-root prefix so /admin/ pages resolve links correctly. -->
+<?php $base ??= str_repeat('../', count(array_filter(explode('/', trim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/'))))); ?>
     <footer class="footer" id="contact">
         <div class="footer-grid">
             <div class="footer-brand">
-                <a class="logo" href="index.php" aria-label="<?= e(APP_NAME) ?> — home">
+                <a class="logo" href="<?= $base ?>index.php" aria-label="<?= e(APP_NAME) ?> — home">
                     <span class="mark"></span>Trust<span class="muted">&nbsp;Wealth</span>
                 </a>
                 <p>A fiduciary wealth-management platform trading Bitcoin and USDT with years of steady market experience behind it.</p>
@@ -17,19 +19,19 @@ if (!isset($scripts)) {
             <div class="footer-col">
                 <h3>Services</h3>
                 <ul>
-                    <li><a href="signup.php">Buy Bitcoin</a></li>
-                    <li><a href="signup.php">Buy USDT</a></li>
-                    <li><a href="signup.php">Sell Bitcoin</a></li>
-                    <li><a href="signup.php">Sign up</a></li>
+                    <li><a href="<?= $base ?>signup.php">Buy Bitcoin</a></li>
+                    <li><a href="<?= $base ?>signup.php">Buy USDT</a></li>
+                    <li><a href="<?= $base ?>signup.php">Sell Bitcoin</a></li>
+                    <li><a href="<?= $base ?>signup.php">Sign up</a></li>
                 </ul>
             </div>
             <div class="footer-col">
                 <h3>Information</h3>
                 <ul>
-                    <li><a href="index.php#about">About us</a></li>
-                    <li><a href="index.php#plans">Pricing</a></li>
-                    <li><a href="index.php#how">Getting started</a></li>
-                    <li><a href="index.php#payment">Payment options</a></li>
+                    <li><a href="<?= $base ?>index.php#about">About us</a></li>
+                    <li><a href="<?= $base ?>index.php#plans">Pricing</a></li>
+                    <li><a href="<?= $base ?>index.php#how">Getting started</a></li>
+                    <li><a href="<?= $base ?>index.php#payment">Payment options</a></li>
                 </ul>
             </div>
             <div class="footer-col">
@@ -45,9 +47,9 @@ if (!isset($scripts)) {
         <div class="copyright">&copy; <?= date('Y') ?> <?= e(APP_NAME) ?> &#8212; All rights reserved</div>
     </footer>
 
-    <script src="main.js"></script>
+    <script src="<?= $base ?>main.js"></script>
     <?php foreach ($scripts as $js) : ?>
-        <script src="<?= e($js) ?>"></script>
+        <script src="<?= $base ?><?= e($js) ?>"></script>
     <?php endforeach; ?>
 </body>
 </html>
