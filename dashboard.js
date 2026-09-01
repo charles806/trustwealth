@@ -37,6 +37,22 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    /* Copy a deposit reference code (admin operator console). */
+    document.querySelectorAll("[data-copy-ref]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const source = document.getElementById(btn.dataset.copyRef);
+            if (!source || !navigator.clipboard) return;
+
+            navigator.clipboard.writeText(source.textContent.trim()).then(() => {
+                const original = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i>Copied';
+                setTimeout(() => {
+                    btn.innerHTML = original;
+                }, 1600);
+            });
+        });
+    });
+
     /* Coin toggle — swap the highlighted address card. */
     const coinRadios = document.querySelectorAll('.coin-toggle input[name="coin"]');
     coinRadios.forEach((radio) => {

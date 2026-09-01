@@ -34,12 +34,12 @@ if (is_file($__localConfig)) {
     require $__localConfig;
 }
 
-/* Database — production (pxxl) defaults. */
-if (!defined('DB_HOST')) define('DB_HOST', '2440xm1uv.pxxldb.pxxl.pro');
-if (!defined('DB_PORT')) define('DB_PORT', 52380);
-if (!defined('DB_NAME')) define('DB_NAME', 'pxxldb_1a0102c98f18a9c');
-if (!defined('DB_USER')) define('DB_USER', 'pxxluser_1a0102c98f1c976');
-if (!defined('DB_PASS')) define('DB_PASS', 'HWK87fJbNcfKE4&dU9fzmEm0jw95KkqL');
+/* Database — production (FreeSQLDatabase) defaults. */
+if (!defined('DB_HOST')) define('DB_HOST', 'sql8.freesqldatabase.com');
+if (!defined('DB_PORT')) define('DB_PORT', 3306);
+if (!defined('DB_NAME')) define('DB_NAME', 'sql8836320');
+if (!defined('DB_USER')) define('DB_USER', 'sql8836320');
+if (!defined('DB_PASS')) define('DB_PASS', '2ClbctFid6');
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/sessions.php';

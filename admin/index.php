@@ -273,14 +273,18 @@ $nav = [
             <?php else : ?>
                 <div class="table-wrap">
                     <table class="tx-table">
-                        <thead><tr><th>Date</th><th>User</th><th>Amount</th><th>Note</th><th>Review</th></tr></thead>
+                        <thead><tr><th>Date</th><th>User</th><th>Amount</th><th>From-address</th><th>Reference</th><th>Review</th></tr></thead>
                         <tbody>
                             <?php foreach ($pendingDeposits as $tx) : ?>
                                 <tr>
                                     <td class="mono muted"><?= e(fmt_date($tx['created_at'])) ?></td>
                                     <td><strong><?= e($tx['fullname']) ?></strong><br><span class="muted mono"><?= e($tx['email']) ?></span></td>
                                     <td class="num mono pos">+<?= fmt_money((float) $tx['amount']) ?></td>
-                                    <td class="muted"><?= e((string) ($tx['note'] ?? '')) ?></td>
+                                    <td class="mono muted"><?= e((string) ($tx['deposit_from'] ?? '')) ?></td>
+                                    <td>
+                                        <span class="mono gold ref-pill" id="ref-<?= (int) $tx['id'] ?>"><?= e((string) ($tx['deposit_ref'] ?? '')) ?></span>
+                                        <button type="button" class="btn btn-ghost btn-sm" data-copy-ref="ref-<?= (int) $tx['id'] ?>"><i class="fa-regular fa-copy"></i>Copy</button>
+                                    </td>
                                     <td>
                                         <div class="row-actions">
                                             <form action="index.php?tab=deposits" method="POST">
@@ -301,6 +305,7 @@ $nav = [
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <p class="ledger-note"><i class="fa-solid fa-shield-halved"></i> Before confirming, match the on-chain payment's <strong>sending address</strong> and <strong>memo/reference</strong> to the from-address and reference above. Ask the client for their reference if it isn't in the memo.</p>
                 </div>
             <?php endif; ?>
 

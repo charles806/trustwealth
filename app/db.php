@@ -79,7 +79,7 @@ function _schema_bootstrap(PDO $pdo): void
                 amount DECIMAL(16,2) NOT NULL,
                 status ENUM('completed','pending') NOT NULL DEFAULT 'completed',
                 note VARCHAR(160) NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT fk_tx_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
@@ -139,6 +139,8 @@ function _migrate(PDO $pdo): void
         _ensure_column($pdo, 'users', 'is_admin', 'ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0 AFTER email');
         _ensure_column($pdo, 'users', 'withdrawal_address', 'ADD COLUMN withdrawal_address VARCHAR(255) NULL AFTER password_hash');
         _ensure_column($pdo, 'portfolios', 'plan_paid_out', 'ADD COLUMN plan_paid_out TINYINT(1) NOT NULL DEFAULT 0 AFTER plan_started_at');
+        _ensure_column($pdo, 'transactions', 'deposit_from', 'ADD COLUMN deposit_from VARCHAR(255) NULL AFTER amount');
+        _ensure_column($pdo, 'transactions', 'deposit_ref', 'ADD COLUMN deposit_ref VARCHAR(32) NULL AFTER deposit_from');
 
         $type = _column_type($pdo, 'transactions', 'type');
         if ($type !== null && stripos($type, 'invest') === false) {

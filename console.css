@@ -272,6 +272,16 @@
     color: var(--gold);
 }
 
+.ref-pill {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--gold) 12%, transparent);
+    font-size: 0.78rem;
+    margin-right: 0.35rem;
+}
+
 .hero-actions {
     display: flex;
     gap: 0.7rem;

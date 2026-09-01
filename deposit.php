@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'depos
     $coin = strtoupper(trim((string) ($_POST['coin'] ?? '')));
     $amount = (float) ($_POST['amount'] ?? 0);
     $txid = trim((string) ($_POST['txid'] ?? ''));
+    $fromAddr = trim((string) ($_POST['from_address'] ?? ''));
 
     if (!in_array($coin, ['BTC', 'USDT'], true)) {
         $errMsg = 'Choose Bitcoin or USDT.';
@@ -28,11 +29,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'depos
         $errMsg = 'Deposit amount is too large.';
     } elseif ($txid === '' || strlen($txid) < 8) {
         $errMsg = 'Please provide the transaction hash so we can match your transfer.';
+    } elseif (!valid_deposit_from($fromAddr)) {
+        $errMsg = 'Enter the exact wallet address you are sending FROM so we can match your payment.';
     } else {
+        $ref = generate_deposit_ref();
         $stmt = $pdo->prepare(
-            'INSERT INTO transactions (user_id, type, amount, status, note) VALUES (?, "deposit", ?, "pending", ?)'
+            'INSERT INTO transactions (user_id, type, amount, deposit_from, deposit_ref, status, note)
+             VALUES (?, "deposit", ?, ?, ?, "pending", ?)'
         );
-        $stmt->execute([$user['id'], $amount, $coin . ' deposit · hash ' . $txid]);
+        $stmt->execute([
+            $user['id'],
+            $amount,
+            $fromAddr,
+            $ref,
+            $coin . ' deposit · hash ' . $txid . ' · ref ' . $ref . ' · from ' . $fromAddr,
+        ]);
 
         header('Location: deposit.php?submitted=1');
         exit;
@@ -41,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'depos
 
 $flash = null;
 if (isset($_GET['submitted'])) {
-    $flash = ['ok', 'Deposit request received. Send exactly that amount to the address above, then our team confirms your balance.'];
+    $flash = ['ok', 'Deposit request received. Send exactly that amount from your address, then our team confirms your balance once the payment and reference match.'];
 }
 
 $pdoStmt = $pdo->prepare(
@@ -87,8 +98,9 @@ $nav = [
         <div class="guide-strip">
             <ol>
                 <li>Choose Bitcoin or USDT you already hold.</li>
-                <li>Send the exact amount to the address shown.</li>
-                <li>Paste the transaction hash here and we approve your balance.</li>
+                <li>Enter the exact address you'll send FROM — it's how we match your payment.</li>
+                <li>Send the exact amount to the address shown and paste the transaction hash.</li>
+                <li>We approve your balance once the on-chain payment and your reference line up.</li>
             </ol>
         </div>
 
@@ -120,6 +132,12 @@ $nav = [
                         <div class="field field-stack">
                             <input type="text" name="txid" inputmode="text" placeholder="Transaction hash (start with the amount you sent)"
                                    required aria-label="Transaction hash" minlength="8">
+                        </div>
+
+                        <div class="field field-stack">
+                            <input type="text" name="from_address" inputmode="text" placeholder="Your sending address (from-address)"
+                                   required aria-label="Your sending wallet address" minlength="25">
+                            <p class="ledger-note"><i class="fa-solid fa-user-check"></i> This must be the exact wallet you send from — it proves the payment is yours.</p>
                         </div>
 
                         <button type="submit" class="btn btn-gold btn-block">Submit for approval</button>
@@ -162,6 +180,7 @@ $nav = [
                                 <th>Date</th>
                                 <th>Currency</th>
                                 <th class="num">Amount</th>
+                                <th>Reference</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -171,6 +190,7 @@ $nav = [
                                     <td class="mono muted"><?= e(fmt_date($tx['created_at'])) ?></td>
                                     <td class="mono"><?= str_contains((string) $tx['note'], 'USDT') ? 'USDT' : 'BTC' ?></td>
                                     <td class="num mono"><?= fmt_money((float) $tx['amount']) ?></td>
+                                    <td class="mono gold"><?= e((string) ($tx['deposit_ref'] ?? '')) ?></td>
                                     <td>
                                         <span class="pill <?= $tx['status'] === 'completed' ? 'pill-ok' : ($tx['status'] === 'cancelled' ? 'pill-cancel' : 'pill-wait') ?>">
                                             <?= ucfirst(e($tx['status'])) ?>

@@ -50,9 +50,11 @@ CREATE TABLE transactions (
     user_id INT UNSIGNED NOT NULL,
     type ENUM('deposit','return','referral','invest','withdraw') NOT NULL,
     amount DECIMAL(16,2) NOT NULL,
+    deposit_from VARCHAR(255) NULL,
+    deposit_ref VARCHAR(32) NULL,
     status ENUM('completed','pending','cancelled') NOT NULL DEFAULT 'completed',
     note VARCHAR(160) NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_tx_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
