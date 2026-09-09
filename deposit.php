@@ -149,11 +149,13 @@ $nav = [
                     <div class="panel address-card" data-coin="BTC" style="display:block;">
                         <p class="panel-label"><i class="fa-brands fa-bitcoin"></i> Bitcoin address</p>
                         <p class="addr" id="addr-btc"><?= e($btcAddr) ?></p>
+                        <div class="qr" id="qr-btc" aria-label="Bitcoin address QR code"></div>
                         <button type="button" class="btn btn-ghost" data-copy="addr-btc"><i class="fa-regular fa-copy"></i>Copy BTC address</button>
                     </div>
                     <div class="panel address-card" data-coin="USDT" style="display:none;">
                         <p class="panel-label"><i class="fa-solid fa-coins"></i> Tether USDT address</p>
                         <p class="addr" id="addr-usdt"><?= e($usdtAddr) ?></p>
+                        <div class="qr" id="qr-usdt" aria-label="Tether USDT address QR code"></div>
                         <button type="button" class="btn btn-ghost" data-copy="addr-usdt"><i class="fa-regular fa-copy"></i>Copy USDT address</button>
                     </div>
                     <p class="deposit-note"><i class="fa-solid fa-shield-halved"></i> Send once, exact amount. Don't reuse a filled address.</p>
@@ -213,5 +215,6 @@ $nav = [
 
 <script src="main.js"></script>
 <script src="dashboard.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </body>
 </html>

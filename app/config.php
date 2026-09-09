@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 define('APP_NAME', 'Trust Wealth Ltd');
 
-/* Live market rate used across the site (demo). */
+/* Live market rate used across the site — refreshed from a public API and
+ * cached in the settings table (see btc_rate() in helpers.php). This define
+ * is only the fallback for when the network is unreachable. */
 define('BTC_USD_RATE', 94500.0);
 
 /* Deposit wallet addresses — the client's own addresses. Override in Settings. */
@@ -34,12 +36,14 @@ if (is_file($__localConfig)) {
     require $__localConfig;
 }
 
-/* Database — production (FreeSQLDatabase) defaults. */
-if (!defined('DB_HOST')) define('DB_HOST', 'sql8.freesqldatabase.com');
-if (!defined('DB_PORT')) define('DB_PORT', 3306);
-if (!defined('DB_NAME')) define('DB_NAME', 'sql8836320');
-if (!defined('DB_USER')) define('DB_USER', 'sql8836320');
-if (!defined('DB_PASS')) define('DB_PASS', '2ClbctFid6');
+/* Database — env (pxxl dashboard) → config.local.php → production defaults.
+ * On the pxxl container no config.local.php exists, so setting DB_* env vars
+ * in the dashboard points the app at any host, e.g. the AWS RDS. */
+if (!defined('DB_HOST')) define('DB_HOST', getenv('DB_HOST') ?: 'sql8.freesqldatabase.com');
+if (!defined('DB_PORT')) define('DB_PORT', getenv('DB_PORT') ?: 3306);
+if (!defined('DB_NAME')) define('DB_NAME', getenv('DB_NAME') ?: 'sql8836320');
+if (!defined('DB_USER')) define('DB_USER', getenv('DB_USER') ?: 'sql8836320');
+if (!defined('DB_PASS')) define('DB_PASS', getenv('DB_PASS') ?: '2ClbctFid6');
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/sessions.php';

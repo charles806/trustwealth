@@ -53,6 +53,32 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    /* Deposit QR codes — address-only, one per coin card. */
+    if (typeof QRCode === "function") {
+        const drawQr = (addrEl, container, uri) => {
+            if (!addrEl || !container) return;
+            new QRCode(container, {
+                text: uri(addrEl.textContent.trim()),
+                width: 180,
+                height: 180,
+                colorDark: "#0d0d0f",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M,
+            });
+        };
+
+        drawQr(
+            document.getElementById("addr-btc"),
+            document.getElementById("qr-btc"),
+            (addr) => "bitcoin:" + addr,
+        );
+        drawQr(
+            document.getElementById("addr-usdt"),
+            document.getElementById("qr-usdt"),
+            (addr) => addr,
+        );
+    }
+
     /* Coin toggle — swap the highlighted address card. */
     const coinRadios = document.querySelectorAll('.coin-toggle input[name="coin"]');
     coinRadios.forEach((radio) => {

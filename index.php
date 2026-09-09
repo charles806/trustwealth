@@ -35,7 +35,7 @@ include __DIR__ . '/partials/header.php';
                     <span class="pair"><span class="live-dot"></span>BTC / USD · live</span>
                     <span class="ledger-time" id="clock">&#8212;</span>
                 </div>
-                <p class="price-line">1 BTC = <span class="gold" id="price-value">$94,500.00</span></p>
+                <p class="price-line">1 BTC = <span class="gold" id="price-value"><?= fmt_money(btc_rate()) ?></span></p>
 
                 <div class="converter">
                     <div class="field">

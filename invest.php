@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'start
             } elseif ($amount > (float) $portfolio['balance_usd']) {
                 $errMsg = 'Not enough available balance — deposit first or lower the amount.';
             } else {
-                $btc = $amount / BTC_USD_RATE;
+                $btc = $amount / btc_rate();
 
                 $pdo->beginTransaction();
                 $pdo->prepare(

@@ -165,7 +165,7 @@ $nav = [
 
             <div class="panel convert-panel">
                 <p class="panel-label">// Converter</p>
-                <p class="panel-price">1 BTC = <span class="gold" id="price-value">$64316.16</span></p>
+                <p class="panel-price">1 BTC = <span class="gold" id="price-value"><?= fmt_money(btc_rate()) ?></span></p>
                 <div class="converter">
                     <div class="field">
                         <input type="number" id="btcAmount" inputmode="decimal" placeholder="0.00" aria-label="Bitcoin amount" min="0" step="any">

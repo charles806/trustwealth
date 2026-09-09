@@ -32,6 +32,7 @@ $base = $basePrefix;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="<?= htmlspecialchars($pageDescription ?? 'Trust Wealth Ltd manages pooled capital with a long-term, transparent philosophy. Trade Bitcoin and USDT on plans that pay out daily.') ?>">
+    <meta name="btc-usd-rate" content="<?= btc_rate() ?>">
     <title><?= htmlspecialchars($pageTitle) ?> — Trust Wealth</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

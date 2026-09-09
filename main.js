@@ -1,108 +1,127 @@
 document.addEventListener("DOMContentLoaded", () => {
-    /* Responsive mobile nav */
-    const menuBtn = document.getElementById("menu-btn");
-    const navLinks = document.getElementById("nav-links");
+  /* Responsive mobile nav */
+  const menuBtn = document.getElementById("menu-btn");
+  const navLinks = document.getElementById("nav-links");
 
-    if (menuBtn && navLinks) {
-        const closeMenu = () => {
-            navLinks.classList.remove("active");
-            menuBtn.setAttribute("aria-expanded", "false");
-            menuBtn.innerHTML = "&#9776;";
-        };
+  if (menuBtn && navLinks) {
+    const closeMenu = () => {
+      navLinks.classList.remove("active");
+      menuBtn.setAttribute("aria-expanded", "false");
+      menuBtn.innerHTML = "&#9776;";
+    };
 
-        menuBtn.addEventListener("click", () => {
-            const isOpen = navLinks.classList.toggle("active");
-            menuBtn.setAttribute("aria-expanded", String(isOpen));
-            menuBtn.innerHTML = isOpen ? "&#10006;" : "&#9776;";
-        });
+    menuBtn.addEventListener("click", () => {
+      const isOpen = navLinks.classList.toggle("active");
+      menuBtn.setAttribute("aria-expanded", String(isOpen));
+      menuBtn.innerHTML = isOpen ? "&#10006;" : "&#9776;";
+    });
 
-        navLinks.addEventListener("click", (e) => {
-            if (e.target.closest("a")) closeMenu();
-        });
-    }
+    navLinks.addEventListener("click", (e) => {
+      if (e.target.closest("a")) closeMenu();
+    });
+  }
 
-    /* Currency converter + live clock */
-    const btcInput = document.getElementById("btcAmount");
-    const usdInput = document.getElementById("usdAmount");
-    const priceValue = document.getElementById("price-value");
-    const clock = document.getElementById("clock");
-    const BTC_TO_USD_RATE = 64316.16;
+  /* Currency converter + live clock */
+  const btcInput = document.getElementById("btcAmount");
+  const usdInput = document.getElementById("usdAmount");
+  const priceValue = document.getElementById("price-value");
+  const clock = document.getElementById("clock");
 
-    const formatUsd = (n) =>
-        n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  /* Live rate is injected server-side on every page load; fall back to a
+     stale constant only if the meta tag is missing. */
+  const metaRate = parseFloat(
+    (document.querySelector('meta[name="btc-usd-rate"]') || {}).content,
+  );
+  const BTC_TO_USD_RATE = isNaN(metaRate) || metaRate <= 0 ? 77813.35 : metaRate;
 
-    if (btcInput && usdInput) {
-        usdInput.placeholder = "$ 0.00";
+  const formatUsd = (n) =>
+    n.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
-        btcInput.addEventListener("input", (e) => {
-            const btc = parseFloat(e.target.value);
+  if (btcInput && usdInput) {
+    usdInput.placeholder = "$ 0.00";
 
-            if (!isNaN(btc) && btc > 0) {
-                const usd = btc * BTC_TO_USD_RATE;
-                usdInput.value = "$ " + formatUsd(usd);
-            } else {
-                usdInput.value = "";
-            }
-        });
-    }
+    btcInput.addEventListener("input", (e) => {
+      const btc = parseFloat(e.target.value);
 
-    if (priceValue) {
-        priceValue.textContent = "$" + formatUsd(BTC_TO_USD_RATE);
-    }
+      if (!isNaN(btc) && btc > 0) {
+        const usd = btc * BTC_TO_USD_RATE;
+        usdInput.value = "$ " + formatUsd(usd);
+      } else {
+        usdInput.value = "";
+      }
+    });
+  }
 
-    if (clock) {
-        const tick = () => {
-            const now = new Date();
-            const hh = String(now.getUTCHours()).padStart(2, "0");
-            const mm = String(now.getUTCMinutes()).padStart(2, "0");
-            const ss = String(now.getUTCSeconds()).padStart(2, "0");
-            clock.textContent = hh + ":" + mm + ":" + ss + " UTC";
-        };
-        tick();
-        setInterval(tick, 1000);
-    }
+  if (priceValue) {
+    priceValue.textContent = "$" + formatUsd(BTC_TO_USD_RATE);
+  }
 
-    /* Signup validation */
-    const form = document.getElementById("signup-form");
+  if (clock) {
+    const tick = () => {
+      const now = new Date();
+      const hh = String(now.getUTCHours()).padStart(2, "0");
+      const mm = String(now.getUTCMinutes()).padStart(2, "0");
+      const ss = String(now.getUTCSeconds()).padStart(2, "0");
+      clock.textContent = hh + ":" + mm + ":" + ss + " UTC";
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
 
-    if (form) {
-        const email = document.getElementById("email");
-        const confirmEmail = document.getElementById("confirm_email");
-        const password = document.getElementById("password");
-        const confirmPassword = document.getElementById("confirm_password");
-        const emailError = document.getElementById("email-error");
-        const passwordError = document.getElementById("password-error");
+  /* Signup validation */
+  const form = document.getElementById("signup-form");
 
-        const setInvalid = (field, error, invalid) => {
-            field.classList.toggle("invalid", invalid);
-            error.classList.toggle("show", invalid);
-        };
+  if (form) {
+    const email = document.getElementById("email");
+    const confirmEmail = document.getElementById("confirm_email");
+    const password = document.getElementById("password");
+    const confirmPassword = document.getElementById("confirm_password");
+    const emailError = document.getElementById("email-error");
+    const passwordError = document.getElementById("password-error");
 
-        const validateEmail = () => {
-            const match = email.value.trim() === confirmEmail.value.trim();
-            setInvalid(confirmEmail, emailError, confirmEmail.value.length > 0 && !match);
-            return match || confirmEmail.value.trim() === "";
-        };
+    const setInvalid = (field, error, invalid) => {
+      field.classList.toggle("invalid", invalid);
+      error.classList.toggle("show", invalid);
+    };
 
-        const validatePassword = () => {
-            const match = password.value === confirmPassword.value;
-            setInvalid(confirmPassword, passwordError, confirmPassword.value.length > 0 && !match);
-            return match || confirmPassword.value === "";
-        };
+    const validateEmail = () => {
+      const match = email.value.trim() === confirmEmail.value.trim();
+      setInvalid(
+        confirmEmail,
+        emailError,
+        confirmEmail.value.length > 0 && !match,
+      );
+      return match || confirmEmail.value.trim() === "";
+    };
 
-        confirmEmail.addEventListener("input", validateEmail);
-        confirmPassword.addEventListener("input", validatePassword);
-        email.addEventListener("input", () => setInvalid(confirmEmail, emailError, false));
+    const validatePassword = () => {
+      const match = password.value === confirmPassword.value;
+      setInvalid(
+        confirmPassword,
+        passwordError,
+        confirmPassword.value.length > 0 && !match,
+      );
+      return match || confirmPassword.value === "";
+    };
 
-        form.addEventListener("submit", (e) => {
-            const emailsOk = validateEmail();
-            const passwordsOk = validatePassword();
+    confirmEmail.addEventListener("input", validateEmail);
+    confirmPassword.addEventListener("input", validatePassword);
+    email.addEventListener("input", () =>
+      setInvalid(confirmEmail, emailError, false),
+    );
 
-            if (!emailsOk || !passwordsOk) {
-                e.preventDefault();
-                (emailsOk ? confirmPassword : confirmEmail)?.focus();
-                return;
-            }
-        });
-    }
+    form.addEventListener("submit", (e) => {
+      const emailsOk = validateEmail();
+      const passwordsOk = validatePassword();
+
+      if (!emailsOk || !passwordsOk) {
+        e.preventDefault();
+        (emailsOk ? confirmPassword : confirmEmail)?.focus();
+        return;
+      }
+    });
+  }
 });

@@ -797,6 +797,20 @@
     font-variant-numeric: tabular-nums;
 }
 
+.qr {
+    background: #fff;
+    border-radius: 8px;
+    padding: 0.55rem;
+    line-height: 0;
+    align-self: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.qr img,
+.qr canvas {
+    display: block;
+}
+
 .deposit-note {
     margin-top: 1.2rem;
     font-family: var(--font-mono);

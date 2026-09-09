@@ -23,7 +23,7 @@ function credit_user(PDO $pdo, int $userId, float $amount): void
     $pdo->prepare(
         'UPDATE portfolios SET balance_usd = balance_usd + ?, btc_amount = btc_amount + ?
          WHERE user_id = ?'
-    )->execute([$amount, $amount / BTC_USD_RATE, $userId]);
+    )->execute([$amount, $amount / btc_rate(), $userId]);
 }
 
 /* ---- actions -------------------------------------------------- */
@@ -80,7 +80,7 @@ try {
                         $pdo->prepare(
                             'UPDATE portfolios SET balance_usd = balance_usd - ?, btc_amount = btc_amount - ?
                              WHERE user_id = ?'
-                        )->execute([$tx['amount'], $tx['amount'] / BTC_USD_RATE, $tx['user_id']]);
+                        )->execute([$tx['amount'], $tx['amount'] / btc_rate(), $tx['user_id']]);
                         $pdo->prepare(
                             "UPDATE transactions SET status = 'completed', note = CONCAT(note, ' · sent') WHERE id = ?"
                         )->execute([$id]);
