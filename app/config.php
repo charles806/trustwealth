@@ -36,14 +36,35 @@ if (is_file($__localConfig)) {
     require $__localConfig;
 }
 
-/* Database — env (pxxl dashboard) → config.local.php → production defaults.
- * On the pxxl container no config.local.php exists, so setting DB_* env vars
- * in the dashboard points the app at any host, e.g. the AWS RDS. */
-if (!defined('DB_HOST')) define('DB_HOST', getenv('DB_HOST') ?: 'sql8.freesqldatabase.com');
-if (!defined('DB_PORT')) define('DB_PORT', getenv('DB_PORT') ?: 3306);
-if (!defined('DB_NAME')) define('DB_NAME', getenv('DB_NAME') ?: 'sql8836320');
-if (!defined('DB_USER')) define('DB_USER', getenv('DB_USER') ?: 'sql8836320');
-if (!defined('DB_PASS')) define('DB_PASS', getenv('DB_PASS') ?: '2ClbctFid6');
+/* Database — config.local.php (local dev) → DB_* env vars (pxxl dashboard).
+ * Production credentials are never stored in this file: set DB_HOST, DB_PORT,
+ * DB_NAME, DB_USER and DB_PASS in the pxxl dashboard (pointing at the AWS RDS).
+ * A missing variable is fatal so the app can never silently hit the wrong DB. */
+$__dbEnv = static function (string $key, ?string $default = null): string {
+    $value = getenv($key);
+
+    if ($value !== false) {
+        return $value;
+    }
+
+    if ($default !== null) {
+        return $default;
+    }
+
+    throw new RuntimeException(
+        $key . ' is not set. Define the DB_* variables in the environment or create app/config.local.php.'
+    );
+};
+
+if (!defined('DB_HOST')) define('DB_HOST', $__dbEnv('DB_HOST'));
+if (!defined('DB_PORT')) define('DB_PORT', $__dbEnv('DB_PORT', '3306'));
+if (!defined('DB_NAME')) define('DB_NAME', $__dbEnv('DB_NAME'));
+if (!defined('DB_USER')) define('DB_USER', $__dbEnv('DB_USER'));
+if (!defined('DB_PASS')) define('DB_PASS', $__dbEnv('DB_PASS'));
+
+/* Optional TLS. Set DB_SSL_CA to a CA bundle (e.g. the AWS RDS global bundle)
+ * to make app/db.php connect with certificate verification. */
+if (!defined('DB_SSL_CA')) define('DB_SSL_CA', getenv('DB_SSL_CA') ?: '');
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/sessions.php';

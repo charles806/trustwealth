@@ -1,0 +1,8 @@
+.git
+.gitignore
+.vscode
+*.md
+sync.sh
+database/install.php
+app/config.local.php
+.DS_Store
