@@ -1,9 +1,13 @@
 <?php
 declare(strict_types=1);
 
-function db(): PDO
+function db(bool $reconnect = false): PDO
 {
     static $pdo = null;
+
+    if ($reconnect) {
+        $pdo = null;
+    }
 
     if ($pdo === null) {
         $dsn = sprintf(
@@ -20,17 +24,46 @@ function db(): PDO
         ];
 
         if (defined('DB_SSL_CA') && DB_SSL_CA !== '') {
-            $options[PDO::MYSQL_ATTR_SSL_CA] = DB_SSL_CA;
-            $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+            if (is_file(DB_SSL_CA)) {
+                $options[PDO::MYSQL_ATTR_SSL_CA] = DB_SSL_CA;
+                $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+            } else {
+                error_log('db: DB_SSL_CA file not found (' . DB_SSL_CA . '), connecting without CA verification');
+            }
         }
 
-        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        try {
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        } catch (PDOException $er) {
+            if (!_is_missing_database($er)) {
+                throw $er;
+            }
+
+            error_log('db: database ' . DB_NAME . ' is missing, creating it');
+            $boot = new PDO(
+                sprintf('mysql:host=%s;port=%d;charset=utf8mb4', DB_HOST, DB_PORT),
+                DB_USER,
+                DB_PASS,
+                $options
+            );
+            $boot->exec(
+                'CREATE DATABASE IF NOT EXISTS `' . str_replace('`', '', DB_NAME) . '`
+                 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'
+            );
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        }
 
         _schema_bootstrap($pdo);
         _migrate($pdo);
     }
 
     return $pdo;
+}
+
+function _is_missing_database(PDOException $er): bool
+{
+    return (int) ($er->errorInfo[1] ?? 0) === 1049
+        || stripos($er->getMessage(), 'Unknown database') !== false;
 }
 
 /*
@@ -124,7 +157,7 @@ function _ensure_sessions_table(PDO $pdo): void
         $pdo->exec(
             "CREATE TABLE IF NOT EXISTS sessions (
                 id VARCHAR(128) NOT NULL PRIMARY KEY,
-                data TEXT NULL,
+                data MEDIUMTEXT NULL,
                 last_activity INT UNSIGNED NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 KEY idx_sessions_activity (last_activity)
@@ -168,6 +201,11 @@ function _migrate(PDO $pdo): void
 
         _seed_setting($pdo, 'btc_deposit_address', defined('BTC_DEPOSIT_ADDRESS') ? BTC_DEPOSIT_ADDRESS : '');
         _seed_setting($pdo, 'usdt_deposit_address', defined('USDT_DEPOSIT_ADDRESS') ? USDT_DEPOSIT_ADDRESS : '');
+
+        $sessionData = _column_type($pdo, 'sessions', 'data');
+        if ($sessionData !== null && stripos($sessionData, 'mediumtext') === false) {
+            $pdo->exec('ALTER TABLE sessions MODIFY COLUMN data MEDIUMTEXT NULL');
+        }
 
         _reset_seeded_demo($pdo);
     } catch (Throwable $er) {

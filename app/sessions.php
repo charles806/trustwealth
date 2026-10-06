@@ -3,116 +3,167 @@ declare(strict_types=1);
 
 final class DbSessionHandler implements SessionHandlerInterface
 {
-    private ?PDO $pdo = null;
+    private ?SessionHandler $files = null;
 
-    private function db(): ?PDO
-    {
-        if ($this->pdo === null) {
-            try {
-                $this->pdo = db();
-            } catch (Throwable $er) {
-                error_log('session handler db: ' . $er->getMessage());
+    private bool $useFiles = false;
 
-                return null;
-            }
-        }
+    private string $sessionName = '';
 
-        return $this->pdo;
-    }
+    private string $savePath = '';
 
     public function open(string $path, string $name): bool
     {
+        $this->savePath = $path;
+        $this->sessionName = $name;
+
         return true;
     }
 
     public function close(): bool
     {
+        if ($this->files !== null) {
+            return $this->files->close();
+        }
+
         return true;
     }
 
     public function read(string $id): string
     {
-        $pdo = $this->db();
-        if ($pdo === null) {
-            return '';
+        if ($this->useFiles) {
+            return $this->fileRead($id);
         }
 
-        try {
-            $stmt = $pdo->prepare('SELECT data FROM sessions WHERE id = ? AND last_activity >= ? LIMIT 1');
-            $stmt->execute([$id, time() - $this->lifetime()]);
-            $data = $stmt->fetchColumn();
+        for ($try = 0; $try < 2; $try++) {
+            try {
+                $stmt = db($try > 0)->prepare(
+                    'SELECT data FROM sessions WHERE id = ? AND last_activity >= ? LIMIT 1'
+                );
+                $stmt->execute([$id, time() - $this->lifetime()]);
+                $data = $stmt->fetchColumn();
 
-            return $data === false ? '' : (string) $data;
-        } catch (Throwable $er) {
-            error_log('session read: ' . $er->getMessage());
-
-            return '';
+                return $data === false ? '' : (string) $data;
+            } catch (Throwable $er) {
+                error_log('session read: ' . $er->getMessage());
+            }
         }
+
+        $this->useFiles = true;
+
+        return $this->fileRead($id);
     }
 
     public function write(string $id, string $data): bool
     {
-        $pdo = $this->db();
-        if ($pdo === null) {
-            return false;
+        if ($this->useFiles) {
+            return $this->fileWrite($id, $data);
         }
 
-        try {
-            $stmt = $pdo->prepare(
-                'INSERT INTO sessions (id, data, last_activity) VALUES (?, ?, ?)
-                 ON DUPLICATE KEY UPDATE data = VALUES(data), last_activity = VALUES(last_activity)'
-            );
-            $stmt->execute([$id, $data, time()]);
+        for ($try = 0; $try < 2; $try++) {
+            try {
+                $stmt = db($try > 0)->prepare(
+                    'INSERT INTO sessions (id, data, last_activity) VALUES (?, ?, ?)
+                     ON DUPLICATE KEY UPDATE data = VALUES(data), last_activity = VALUES(last_activity)'
+                );
+                $stmt->execute([$id, $data, time()]);
 
-            return true;
-        } catch (Throwable $er) {
-            error_log('session write: ' . $er->getMessage());
-
-            return false;
+                return true;
+            } catch (Throwable $er) {
+                error_log('session write: ' . $er->getMessage());
+            }
         }
+
+        $this->useFiles = true;
+
+        return $this->fileWrite($id, $data);
     }
 
     public function destroy(string $id): bool
     {
-        $pdo = $this->db();
-        if ($pdo === null) {
-            return false;
+        if ($this->useFiles) {
+            return $this->fileDestroy($id);
         }
 
-        try {
-            $stmt = $pdo->prepare('DELETE FROM sessions WHERE id = ?');
-            $stmt->execute([$id]);
+        for ($try = 0; $try < 2; $try++) {
+            try {
+                db($try > 0)->prepare('DELETE FROM sessions WHERE id = ?')->execute([$id]);
 
-            return true;
-        } catch (Throwable $er) {
-            error_log('session destroy: ' . $er->getMessage());
-
-            return false;
+                return true;
+            } catch (Throwable $er) {
+                error_log('session destroy: ' . $er->getMessage());
+            }
         }
+
+        $this->useFiles = true;
+
+        return $this->fileDestroy($id);
     }
 
     public function gc(int $max_lifetime): int|false
     {
-        $pdo = $this->db();
-        if ($pdo === null) {
-            return false;
+        if ($this->useFiles) {
+            $result = $this->fileHandler()?->gc($max_lifetime);
+
+            return $result === false ? 0 : $result;
         }
 
-        try {
-            $stmt = $pdo->prepare('DELETE FROM sessions WHERE last_activity < ?');
-            $stmt->execute([time() - $max_lifetime]);
+        for ($try = 0; $try < 2; $try++) {
+            try {
+                $stmt = db($try > 0)->prepare('DELETE FROM sessions WHERE last_activity < ?');
+                $stmt->execute([time() - $max_lifetime]);
 
-            return $stmt->rowCount();
-        } catch (Throwable $er) {
-            error_log('session gc: ' . $er->getMessage());
-
-            return false;
+                return $stmt->rowCount();
+            } catch (Throwable $er) {
+                error_log('session gc: ' . $er->getMessage());
+            }
         }
+
+        return 0;
     }
 
     public function create_sid(): string
     {
         return bin2hex(random_bytes(32));
+    }
+
+    private function fileHandler(): ?SessionHandler
+    {
+        if ($this->files !== null) {
+            return $this->files;
+        }
+
+        $path = $this->savePath;
+        if ($path === '' || !is_dir($path) || !is_writable($path)) {
+            $path = sys_get_temp_dir();
+        }
+
+        $handler = new SessionHandler();
+        if (!$handler->open($path, $this->sessionName)) {
+            error_log('session fallback: cannot open file session path ' . $path);
+
+            return null;
+        }
+
+        $this->files = $handler;
+
+        return $handler;
+    }
+
+    private function fileRead(string $id): string
+    {
+        $data = $this->fileHandler()?->read($id);
+
+        return $data === false || $data === null ? '' : $data;
+    }
+
+    private function fileWrite(string $id, string $data): bool
+    {
+        return $this->fileHandler()?->write($id, $data) ?? false;
+    }
+
+    private function fileDestroy(string $id): bool
+    {
+        return $this->fileHandler()?->destroy($id) ?? false;
     }
 
     private function lifetime(): int

@@ -60,7 +60,7 @@ CREATE TABLE transactions (
 
 CREATE TABLE sessions (
     id VARCHAR(128) NOT NULL PRIMARY KEY,
-    data TEXT NULL,
+    data MEDIUMTEXT NULL,
     last_activity INT UNSIGNED NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     KEY idx_sessions_activity (last_activity)
